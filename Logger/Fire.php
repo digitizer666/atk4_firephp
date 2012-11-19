@@ -10,19 +10,20 @@ class Logger_Fire extends Logger_Base {
 	function init() {
 		parent::init();
 		
+#		$this->api->debug=true;
+		$this->fire_output=$this->api->getConfig('logger/fire_output',null);
 		
-		$this->fire_output=$this->api->getConfig('logger/fire_output','null');
-		
-		if ($this->fire_output) {
+		if (!is_null($this->fire_output)) {
 			if (!is_object($this->firephp))
 				$this->firephp = FirePHP::getInstance(true);
-			$this->firephp->setEnabled(true);			
+			$this->firephp->setEnabled(true);
+			$this->outputInfo($this,"FirePHP Logger started...");
+			
 		}
-		$this->outputInfo($this,"FirePHP Logger started...");
 	}
 	
 	function backtrace($sh=null,$backtrace=null){
-		if (!$this->fire_output) {
+		if (is_null($this->fire_output)) {
 			parent::backtrace($sh,$backtrace);
 			return;
 		}
@@ -78,7 +79,7 @@ class Logger_Fire extends Logger_Base {
 	}
 	
 	function caughtException($caller,$e) {
-		if (!$this->fire_output) {
+		if (is_null($this->fire_output)) {
 			parent::caughtException($caller,$e);
 			return;
 		}
@@ -115,7 +116,7 @@ class Logger_Fire extends Logger_Base {
 		exit;
 	}
 	function outputFatal($caller,$msg,$shift=0) {
-		if (!$this->fire_output) {
+		if (is_null($this->fire_output)) {
 			parent::outputFatal($caller,$msg,$shift);
 			return;
 		}
@@ -132,7 +133,7 @@ class Logger_Fire extends Logger_Base {
 		
 	}
 	function outputWarning($caller,$msg,$shift=0) {
-		if (!$this->fire_output) {
+		if (is_null($this->fire_output)) {
 			parent::outputWarning($caller,$msg,$shift);
 			return;
 		}
@@ -140,7 +141,7 @@ class Logger_Fire extends Logger_Base {
 		
 	}
 	function outputInfo($caller,$msg,$shift=0,$nohtml=false) {
-		if (!$this->fire_output) {
+		if (is_null($this->fire_output)) {
 			parent::outputInfo($caller,$msg,$shift,$nohtml);
 			return;
 		}
@@ -148,7 +149,7 @@ class Logger_Fire extends Logger_Base {
 		$this->firephp->info($msg);
 	}
 	function outputDebug($caller,$msg,$shift=0){
-		if (!$this->fire_output) {
+		if (is_null($this->fire_output)) {
 			parent::outputDebug($caller,$msg,$shift);
 			return;
 		}
