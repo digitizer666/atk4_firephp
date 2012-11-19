@@ -18,8 +18,63 @@ class Logger_Fire extends Logger_Base {
 				$this->firephp = FirePHP::getInstance(true);
 			$this->firephp->setEnabled(true);			
 		}
-		$this->api->debug("FirePHP Logger started...");
 		$this->outputInfo($this,"FirePHP Logger started...");
+	}
+	
+	function backtrace($sh=null,$backtrace=null){
+		if (!$this->fire_output) {
+			parent::backtrace($sh,$backtrace);
+			return;
+		}
+		if(!isset($backtrace)) $backtrace=debug_backtrace();
+	
+		$n=0;
+		foreach($backtrace as $bt){
+			$n++;
+			$args = '';
+			if(!isset($bt['args']))continue;
+			foreach($bt['args'] as $a){
+				if(!empty($args)){
+					$args .= ', ';
+				}
+				switch (gettype($a)) {
+					case 'integer':
+					case 'double':
+						$args .= $a;
+						break;
+					case 'string':
+						$a = htmlspecialchars(substr($a, 0, 128)).((strlen($a) > 128) ? '...' : '');
+						$args .= "\"$a\"";
+						break;
+					case 'array':
+						$args .= "Array(".count($a).")";
+						break;
+					case 'object':
+						$args .= "Object(".get_class($a).")";
+						break;
+					case 'resource':
+						$args .= "Resource(".strstr($a, '#').")";
+						break;
+					case 'boolean':
+						$args .= $a ? 'True' : 'False';
+						break;
+					case 'NULL':
+						$args .= 'Null';
+						break;
+					default:
+						$args .= 'Unknown';
+				}
+			}
+	
+			if(($sh==null && strpos($bt['file'],'/atk4/lib/')===false) || (!is_int($sh) && $bt['function']==$sh)){
+				$sh=$n;
+			}
+	
+			$name=(!isset($bt['object']->name))?get_class($bt['object']):$bt['object']->name;
+			if($bt['object'])$x = $name;else $x="";
+			$output[]=array(dirname($bt['file']),basename($bt['file']),$bt['line'],$x,get_class($bt['object']),$bt['type'],$bt['function']."(".$args.")");
+		}
+		return array("Backtrace",$output);
 	}
 	
 	function caughtException($caller,$e) {
@@ -32,29 +87,31 @@ class Logger_Fire extends Logger_Base {
 		$f=$this->firephp;
 		$f->group(get_class($e));
 		$f->log($e->getMessage(),array('color'=>'red'));
-		$f->groupEnd();
-/*
-		if(method_exists($e,'getAdditionalMessage'))echo '<p><font color=red>' . $e->getAdditionalMessage() . '</font></p>';
+
+		if(method_exists($e,'getAdditionalMessage')) $f->log($e->getAdditionalMessage());
 		if($e->more_info){
-			echo '<p>Additional information: <ul>';
+			$table   = array();
 			foreach($e->more_info as $key=>$info){
 				if(is_array($info))$info=print_r($info,true);
-				echo '<li>'.$key.': '.$info.'</li>';
+				$table[] = array($key,$info);
 			}
-			echo '</ul></p>';
+			$f->table("Additional information:",$table);
 		}
 		if($e->actions){
-			echo '<p>Possible Actions: <ul>';
+			$table   = array();
 			foreach($e->actions as $key=>$val){
-				echo '<li><a href="'.$this->api->getDestinationURL(null,$val).'">'.$key.'</a></li>';
+				$table[] = array($key,$val);
 			}
-			echo '</ul></p>';
+			$f->table("Possible Actions:",$table);
 		}
-		if(method_exists($e,'getMyFile'))echo '<p><font color=blue>' . $e->getMyFile() . ':' . $e->getMyLine() . '</font></p>';
+		if(method_exists($e,'getMyFile')) $f->log($e->getMyFile().':'.$e->getMyLine());
 		
-		if(method_exists($e,'getMyTrace'))echo $this->backtrace($e->shift,$e->getMyTrace());
-		else echo $this->backtrace($e->shift,$e->getTrace());
-*/		
+		if(method_exists($e,'getMyTrace'))$t=$this->backtrace($e->shift,$e->getMyTrace());
+		else $t=$this->backtrace($e->shift,$e->getTrace());
+		$f->table($t[0],$t[1], array('Collapsed' => false));
+		
+		$f->groupEnd();
+		
 		exit;
 	}
 	function outputFatal($caller,$msg,$shift=0) {
